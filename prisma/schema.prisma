@@ -1,0 +1,260 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users / Auth ─────────────────────────────────────────────
+model User {
+  id           String    @id @default(cuid())
+  username     String    @unique
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         UserRole  @default(OPERATOR)
+  phone        String?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  otpCodes  OtpCode[]
+  auditLogs AuditLog[]
+
+  @@map("users")
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  userId    String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("otp_codes")
+}
+
+enum UserRole {
+  ADMIN
+  OPERATOR
+}
+
+// ─── Clients ──────────────────────────────────────────────────
+model Client {
+  id               String       @id @default(cuid())
+  name             String
+  documentId       String
+  phone            String
+  email            String?
+  address          String?
+  city             String?
+  location         String?
+  plan             String
+  planSpeed        Int
+  monthlyFee       Int
+  status           ClientStatus @default(ACTIVE)
+  paymentDueDay    Int          @default(5)
+  installationDate DateTime?
+  contractNumber   String?
+  notes            String?
+  tags             String[]
+  latency          Int?
+  uptime           Float?
+  bandwidthUsage   Float?
+  lastConnection   DateTime?
+  // MikroTik PPPoE
+  routerIp         String?
+  pppoeUsername    String?
+  pppoePassword    String?      // AES-256 encrypted via cryptoService
+  routerProfile    String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  tickets        Ticket[]
+  cuts           Cut[]
+  communications Communication[]
+  payments       Payment[]
+
+  @@map("clients")
+}
+
+enum ClientStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING
+}
+
+// ─── Tickets ──────────────────────────────────────────────────
+model Ticket {
+  id          String       @id @default(cuid())
+  clientId    String
+  title       String
+  description String
+  status      TicketStatus @default(OPEN)
+  priority    Priority     @default(MEDIUM)
+  type        String
+  assignedTo  String?
+  resolvedAt  DateTime?
+  resolution  String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  client Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  notes  TicketNote[]
+
+  @@map("tickets")
+}
+
+model TicketNote {
+  id        String   @id @default(cuid())
+  ticketId  String
+  content   String
+  author    String
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@map("ticket_notes")
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING
+  RESOLVED
+  CLOSED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// ─── Cuts ─────────────────────────────────────────────────────
+model Cut {
+  id          String    @id @default(cuid())
+  clientId    String
+  reason      String
+  scheduledAt DateTime
+  executedAt  DateTime?
+  restoredAt  DateTime?
+  status      CutStatus @default(SCHEDULED)
+  notes       String?
+  createdAt   DateTime  @default(now())
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("cuts")
+}
+
+enum CutStatus {
+  SCHEDULED
+  EXECUTED
+  RESTORED
+  CANCELLED
+}
+
+// ─── Communications ───────────────────────────────────────────
+model Communication {
+  id          String     @id @default(cuid())
+  clientId    String?
+  type        CommType
+  title       String
+  body        String
+  sentAt      DateTime   @default(now())
+  status      CommStatus @default(SENT)
+  deliveredAt DateTime?
+  sentByName  String?
+  channels    String[]   @default([])
+
+  client Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@map("communications")
+}
+
+enum CommType {
+  PAYMENT_REMINDER
+  SUSPENSION_NOTICE
+  MAINTENANCE_ALERT
+  OUTAGE_NOTICE
+  PROMOTION
+  GENERAL
+}
+
+enum CommStatus {
+  SENT
+  DELIVERED
+  FAILED
+}
+
+// ─── Tasks ────────────────────────────────────────────────────
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  clientId    String?
+  priority    Priority   @default(MEDIUM)
+  type        String
+  status      TaskStatus @default(PENDING)
+  dueDate     DateTime?
+  completedAt DateTime?
+  assignedTo  String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("tasks")
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+// ─── Payments ─────────────────────────────────────────────────
+model Payment {
+  id        String        @id @default(cuid())
+  clientId  String
+  amount    Int
+  month     String
+  status    PaymentStatus @default(PENDING)
+  paidAt    DateTime?
+  method    String?
+  notes     String?
+  createdAt DateTime      @default(now())
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  OVERDUE
+  PARTIAL
+}
+
+// ─── Audit Log ────────────────────────────────────────────────
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("audit_logs")
+}

@@ -1,141 +1,170 @@
-# NEXORY Backend API
+# Nexory — Backend
 
-Backend API para el sistema de gestión de ISP NEXORY.
+API REST para el sistema de gestión de ISP Nexory.  
+**Stack:** Node.js 20 · Express · TypeScript · PostgreSQL · Prisma ORM · JWT
 
-## 🚀 Inicio Rápido
+---
 
-### Prerrequisitos
+## Setup en Mac nueva (desde cero)
 
-- Node.js 18+ 
-- MySQL 8.0+
-- npm o yarn
+Si la Mac no tiene nada instalado, este script lo hace todo automáticamente:
 
-### Instalación
-
-1. **Instalar dependencias:**
 ```bash
-npm install
+bash setup-mac.sh
 ```
 
-2. **Configurar variables de entorno:**
+Instala: Homebrew → Node.js 20 → PostgreSQL 16 → crea la BD → genera el `.env` → instala dependencias → aplica el esquema Prisma.
+
+Solo se corre **una vez**.
+
+---
+
+## Setup manual (paso a paso)
+
+### 1 — Instalar Homebrew
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+### 2 — Instalar Node.js 20
+
+```bash
+brew install node@20
+```
+
+Verificar:
+
+```bash
+node --version   # debe mostrar v20.x.x
+npm --version
+```
+
+### 3 — Instalar PostgreSQL 16
+
+```bash
+brew install postgresql@16
+brew services start postgresql@16
+```
+
+### 4 — Crear la base de datos
+
+```bash
+psql postgres -c "CREATE DATABASE nexory_db;"
+```
+
+### 5 — Configurar variables de entorno
+
 ```bash
 cp .env.example .env
 ```
 
-Edita el archivo `.env` con tus credenciales de MySQL:
+Editar el `.env` con tu editor:
+
 ```env
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=tu_password
-DB_NAME=nexory_db
-JWT_SECRET=tu_secret_key_super_segura
+PORT=3000
+NODE_ENV=development
+JWT_SECRET=cambia_esto_por_algo_seguro
+JWT_EXPIRES_IN=24h
+FRONTEND_URL=http://localhost:5001
+
+DATABASE_URL="postgresql://TU_USUARIO:TU_PASSWORD@localhost:5432/nexory_db"
+
+# MikroTik (opcional si no tienes router)
+MIKROTIK_HOST=192.168.1.1
+MIKROTIK_USER=admin
+MIKROTIK_PASS=
+MIKROTIK_PORT=8728
+
+# WAHA — WhatsApp (opcional)
+WAHA_BASE_URL=http://localhost:3010
+WAHA_API_KEY=
+WAHA_SESSION=nexory
 ```
 
-3. **Crear la base de datos:**
+> Para `DATABASE_URL`: si instalaste PostgreSQL con Homebrew sin contraseña, el formato es:
+> `postgresql://TU_USUARIO_DE_MAC:@localhost:5432/nexory_db`
+
+### 6 — Instalar dependencias
+
 ```bash
-mysql -u root -p < database/schema.sql
+npm install
 ```
 
-4. **Ejecutar seed (opcional):**
+### 7 — Aplicar esquema a la base de datos
+
 ```bash
-mysql -u root -p < database/seed.sql
+npx prisma db push
 ```
 
-5. **Iniciar el servidor:**
+### 8 — Correr el servidor
+
 ```bash
-# Desarrollo (con hot reload)
+npm run dev
+```
+
+Corre en → `http://localhost:3000`
+
+---
+
+## Comandos útiles
+
+```bash
+# Correr en desarrollo (hot reload)
 npm run dev
 
-# Producción
+# Compilar para producción
 npm run build
 npm start
+
+# Ver y editar la BD visualmente
+npx prisma studio
+# → http://localhost:5555
+
+# Aplicar cambios al esquema (después de editar schema.prisma)
+npx prisma db push
+
+# Detener / iniciar PostgreSQL
+brew services stop postgresql@16
+brew services start postgresql@16
 ```
 
-## 📁 Estructura del Proyecto
+---
+
+## Estructura
 
 ```
 nexory-backend/
+├── prisma/
+│   ├── schema.prisma       # Esquema de la BD (fuente de verdad)
+│   └── seed.ts             # Datos iniciales
 ├── src/
-│   ├── config/          # Configuración (DB, env)
-│   ├── controllers/     # Lógica de negocio
-│   ├── middleware/      # Middleware (auth, errors, cors)
-│   ├── models/         # Modelos de datos (si usas ORM)
-│   ├── routes/          # Definición de rutas
-│   ├── types/          # Tipos TypeScript
-│   ├── utils/          # Utilidades (JWT, password, etc.)
-│   └── app.ts          # Aplicación principal
-├── database/
-│   ├── schema.sql      # Esquema de base de datos
-│   └── seed.sql        # Datos iniciales
-├── .env.example        # Ejemplo de variables de entorno
+│   ├── config/             # Configuración (env, DB)
+│   ├── controllers/        # Lógica de cada módulo
+│   ├── middleware/         # Auth JWT, CORS, errores
+│   ├── routes/             # Definición de rutas
+│   ├── services/           # Servicios externos (MikroTik, WAHA)
+│   └── app.ts              # Entrada principal
+├── .env.example            # Plantilla de variables de entorno
+├── setup-mac.sh            # Script de instalación automática
 └── package.json
 ```
 
-## 🔌 Endpoints API
+---
 
-### Autenticación
-- `POST /api/auth/login` - Iniciar sesión
-- `GET /api/auth/me` - Obtener usuario actual
+## Puertos
 
-### Clientes
-- `GET /api/clients` - Listar clientes (con filtros)
-- `GET /api/clients/:id` - Obtener cliente por ID
-- `PATCH /api/clients/:id/status` - Cambiar estado del cliente (admin only)
+| Servicio       | Puerto |
+|----------------|--------|
+| Backend API    | 3000   |
+| Prisma Studio  | 5555   |
+| WAHA WhatsApp  | 3010   |
 
-### Dashboard
-- `GET /api/dashboard/stats` - Obtener estadísticas
-- `GET /api/dashboard/activities` - Obtener actividades recientes
+---
 
-### Routers
-- `GET /api/routers` - Listar routers
-- `GET /api/routers/:id` - Obtener router por ID
-- `PATCH /api/routers/:id/status` - Cambiar estado del router (admin only)
+## Roles de usuario
 
-### Soporte Técnico
-- `GET /api/support` - Listar tickets de soporte
-- `GET /api/support/:id` - Obtener ticket por ID
-- `PATCH /api/support/:id/status` - Actualizar estado del ticket
-
-### Notificaciones
-- `GET /api/notifications` - Obtener notificaciones
-- `PATCH /api/notifications/:id/read` - Marcar como leída
-- `PATCH /api/notifications/read-all` - Marcar todas como leídas
-
-### Facturación
-- `GET /api/billing` - Obtener datos de facturación (admin only)
-
-📖 Ver [API.md](./API.md) para documentación completa de la API
-
-## 🔐 Autenticación
-
-Las rutas protegidas requieren un token JWT en el header:
-```
-Authorization: Bearer <token>
-```
-
-## 🗄️ Base de Datos
-
-El esquema incluye las siguientes tablas:
-- `users` - Usuarios del sistema
-- `clients` - Clientes
-- `client_tags` - Tags de clientes
-- `routers` - Routers
-- `technical_supports` - Soporte técnico
-- `notifications` - Notificaciones
-- `activities` - Logs de actividades
-- `billing_data` - Datos de facturación
-- `client_metrics` - Métricas de clientes
-
-## 🛠️ Scripts Disponibles
-
-- `npm run dev` - Inicia el servidor en modo desarrollo
-- `npm run build` - Compila TypeScript a JavaScript
-- `npm start` - Inicia el servidor en producción
-- `npm run db:migrate` - Ejecuta migraciones (si las hay)
-
-## 📝 Notas
-
-- El servidor corre en el puerto 3000 por defecto
-- Asegúrate de que MySQL esté corriendo antes de iniciar el servidor
-- Para producción, cambia `JWT_SECRET` a una clave segura y aleatoria
+| Rol        | Acceso |
+|------------|--------|
+| `admin`    | Todo: clientes, soporte, cortes, comunicados, configuración |
+| `operator` | Soporte y clientes (sin configuración ni comunicados masivos) |

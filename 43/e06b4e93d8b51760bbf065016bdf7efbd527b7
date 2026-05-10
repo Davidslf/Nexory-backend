@@ -1,0 +1,22 @@
+infra/deploy.sh
+  s_88272df344e885::t_3880f6a2908b4f 13
+infra/main.bicep
+  s_88272df344e885::t_5112f83f6048a1 13,16-17
+  s_88272df344e885::t_885696cb639843 94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "43e06b4e93d8b51760bbf065016bdf7efbd527b7",
+  "prompts": {},
+  "sessions": {
+    "s_88272df344e885": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d936897-5d99-4f68-8594-8b19ff3b1708",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Davidslf <deividlujan200@gmail.com>"
+    }
+  }
+}

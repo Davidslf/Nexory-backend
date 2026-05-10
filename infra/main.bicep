@@ -10,8 +10,11 @@
 @description('Nombre del entorno (dev, prod)')
 param environmentName string = 'dev'
 
-@description('Región de Azure')
+@description('Región de Azure para la mayoría de recursos')
 param location string = resourceGroup().location
+
+@description('Región para PostgreSQL (brazilsouth funciona con suscripción estudiante)')
+param dbLocation string = 'brazilsouth'
 
 @secure()
 @description('Contraseña del administrador de PostgreSQL')
@@ -88,7 +91,7 @@ resource containerAppEnv 'Microsoft.App/managedEnvironments@2023-05-01' = {
 
 resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2022-12-01' = {
   name: postgresServerName
-  location: location
+  location: dbLocation
   sku: {
     name: 'Standard_B1ms'
     tier: 'Burstable'

@@ -1,0 +1,19 @@
+Dockerfile
+  s_88272df344e885::t_49d4444ce3ac24 1-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "4e1ceb7f1aaa0a5e19804645cdf8fdfe72bd7c81",
+  "prompts": {},
+  "sessions": {
+    "s_88272df344e885": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d936897-5d99-4f68-8594-8b19ff3b1708",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Davidslf <deividlujan200@gmail.com>"
+    }
+  }
+}

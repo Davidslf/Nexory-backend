@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/database';
 import { sendBulkWhatsApp } from '../services/wahaService';
+import { sendBulkEmails, communicationTemplate } from '../services/emailService';
 import { CommType } from '@prisma/client';
 import { logAudit, getIp } from '../services/auditService';
 
@@ -31,7 +32,7 @@ export const sendCommunication = async (req: Request, res: Response): Promise<vo
     // Obtener clientes destino
     const clients = await prisma.client.findMany({
       where: clientIds === 'all' ? { status: 'ACTIVE' } : { id: { in: clientIds } },
-      select: { id: true, name: true, phone: true },
+      select: { id: true, name: true, phone: true, email: true },
     });
 
     if (clients.length === 0) {
@@ -39,18 +40,49 @@ export const sendCommunication = async (req: Request, res: Response): Promise<vo
       return;
     }
 
-    // Personalizar y enviar
-    const targets = clients.map(c => {
-      const firstName = c.name.split(' ')[0];
-      return {
-        phone: c.phone,
-        name: c.name,
-        clientId: c.id,
-        message: body.replace(/\{nombre\}/gi, firstName),
-      };
-    });
+    const useWhatsApp = !channels || channels.includes('whatsapp');
+    const useEmail    = channels?.includes('email') ?? false;
 
-    const results = await sendBulkWhatsApp(targets);
+    // Personalizar y enviar por WhatsApp
+    const waTargets = useWhatsApp ? clients
+      .filter(c => c.phone)
+      .map(c => ({
+        phone:    c.phone!,
+        name:     c.name,
+        clientId: c.id,
+        message:  body.replace(/\{nombre\}/gi, c.name.split(' ')[0]),
+      })) : [];
+
+    // Personalizar y enviar por email
+    const emailTargets = useEmail ? clients
+      .filter(c => c.email)
+      .map(c => ({
+        email:    c.email!,
+        name:     c.name,
+        clientId: c.id,
+        template: communicationTemplate(
+          c.name,
+          title,
+          body.replace(/\{nombre\}/gi, c.name.split(' ')[0]),
+        ),
+      })) : [];
+
+    const [waResults, emailResults] = await Promise.all([
+      waTargets.length    ? sendBulkWhatsApp(waTargets)    : Promise.resolve([]),
+      emailTargets.length ? sendBulkEmails(emailTargets)   : Promise.resolve([]),
+    ]);
+
+    // Combinar resultados (un cliente puede aparecer en ambos canales)
+    const resultMap = new Map<string, 'sent' | 'failed'>();
+    for (const r of [...waResults, ...emailResults]) {
+      const cur = resultMap.get(r.clientId);
+      // Si algún canal tuvo éxito → sent
+      if (!cur || cur === 'failed') resultMap.set(r.clientId, r.status);
+    }
+    // Clientes que no tenían ni phone ni email → failed
+    clients.forEach(c => { if (!resultMap.has(c.id)) resultMap.set(c.id, 'failed'); });
+
+    const results = Array.from(resultMap.entries()).map(([clientId, status]) => ({ clientId, status }));
 
     // Guardar historial por cliente
     const sent = results.filter(r => r.status === 'sent');

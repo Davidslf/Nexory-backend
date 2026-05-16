@@ -13,8 +13,8 @@ param environmentName string = 'dev'
 @description('Región de Azure para la mayoría de recursos')
 param location string = resourceGroup().location
 
-@description('Región para PostgreSQL (brazilsouth funciona con suscripción estudiante)')
-param dbLocation string = 'brazilsouth'
+@description('Región para PostgreSQL')
+param dbLocation string = 'eastus2'
 
 @secure()
 @description('Contraseña del administrador de PostgreSQL')

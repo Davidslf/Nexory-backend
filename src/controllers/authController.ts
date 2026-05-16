@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import axios from 'axios';
 import { prisma } from '../config/database';
 import { sendWhatsAppMessage } from '../services/wahaService';
+import { sendEmail, otpTemplate, loginNotificationTemplate } from '../services/emailService';
 import { logAudit, getIp } from '../services/auditService';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'nexory_secret';
@@ -47,31 +48,40 @@ export const loginStep1 = async (req: Request, res: Response): Promise<void> => 
       data: { userId: user.id, code, expiresAt },
     });
 
-    const isDev = process.env.NODE_ENV === 'development';
+    const isDev    = process.env.NODE_ENV === 'development';
+    // channel: 'whatsapp' | 'email' | 'both' — default whatsapp
+    const channel: 'whatsapp' | 'email' | 'both' = req.body.channel ?? 'whatsapp';
 
-    // Enviar código por WhatsApp si tiene número registrado
-    if (user.phone) {
+    const sent: string[] = [];
+
+    const wantWa    = channel === 'whatsapp' || channel === 'both';
+    const wantEmail = channel === 'email'    || channel === 'both';
+
+    if (wantWa && user.phone) {
       try {
         await sendWhatsAppMessage(
           user.phone,
           `🔐 *NEXORY — Código de verificación*\n\nTu código es: *${code}*\n\nVálido por ${OTP_EXPIRY_MINUTES} minutos. No lo compartas con nadie.`,
         );
-      } catch {
-        // WhatsApp falló — no es bloqueante
-      }
-      res.json({
-        message: 'Código enviado por WhatsApp',
-        userId: user.id,
-        phoneMasked: user.phone.slice(0, 3) + '***' + user.phone.slice(-4),
-        ...(isDev && { devCode: code }),
-      });
-    } else {
-      res.json({
-        message: 'Usuario sin número de WhatsApp',
-        userId: user.id,
-        ...(isDev && { devCode: code }),
-      });
+        sent.push('WhatsApp');
+      } catch { /* no bloqueante */ }
     }
+
+    if (wantEmail && user.email) {
+      try {
+        await sendEmail(user.email, otpTemplate(user.name, code, OTP_EXPIRY_MINUTES));
+        sent.push('email');
+      } catch { /* no bloqueante */ }
+    }
+
+    const channelStr = sent.length ? sent.join(' y ') : 'ningún canal';
+    res.json({
+      message:     sent.length ? `Código enviado por ${channelStr}` : 'Código generado (configura WhatsApp o email)',
+      userId:      user.id,
+      phoneMasked: user.phone  ? user.phone.slice(0, 3) + '***' + user.phone.slice(-4) : undefined,
+      emailMasked: user.email  ? user.email.slice(0, 3) + '***' + user.email.split('@')[1] : undefined,
+      ...(isDev && { devCode: code }),
+    });
   } catch (err) {
     console.error('[Auth] loginStep1:', err);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -188,10 +198,9 @@ async function sendLoginNotification(req: Request, name: string, phone: string) 
   });
 
   const firstName = name.split(' ')[0];
-  const msg =
+  const waMsg =
     `🔔 *NEXORY — Inicio de sesión detectado*\n\n` +
     `Hola ${firstName},\n\n` +
-    `Te informamos sobre un nuevo inicio de sesión en tu cuenta:\n\n` +
     `📱 *Dispositivo:* ${device}\n` +
     `📍 *Ubicación:* ${location}\n` +
     `📅 *Fecha:* ${dateStr}\n` +
@@ -199,8 +208,19 @@ async function sendLoginNotification(req: Request, name: string, phone: string) 
     `Si fuiste tú, no es necesario hacer nada.\n` +
     `Si no reconoces este acceso, contacta al administrador inmediatamente.`;
 
-  await sendWhatsAppMessage(phone, msg);
-  console.log(`[Auth] 🔔 Notificación de login enviada a ${firstName} (${phone})`);
+  // Send via WhatsApp
+  await sendWhatsAppMessage(phone, waMsg).catch(() => {});
+  console.log(`[Auth] 🔔 Notificación de login WA enviada a ${firstName} (${phone})`);
+
+  // Send via email (if user has email)
+  const user = await import('../config/database').then(m =>
+    m.prisma.user.findFirst({ where: { phone }, select: { email: true, name: true } })
+  ).catch(() => null);
+
+  if (user?.email) {
+    await sendEmail(user.email, loginNotificationTemplate(user.name, device, location, dateStr, timeStr)).catch(() => {});
+    console.log(`[Auth] 🔔 Notificación de login email enviada a ${user.email}`);
+  }
 }
 
 // ── Obtener perfil del usuario autenticado ─────────────────────
@@ -215,5 +235,20 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
     res.json({ ...user, role: user.role.toLowerCase() });
   } catch (err) {
     res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+// ── Estado de WhatsApp (WAHA) — público ───────────────────────
+export const getWahaStatus = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const { getSessionStatus } = await import('../services/wahaService');
+    const result = await getSessionStatus();
+    res.json({
+      ok:      result.ok,
+      status:  result.status ?? (result.error ? 'ERROR' : 'UNKNOWN'),
+      message: result.ok ? 'WhatsApp conectado y listo' : 'WhatsApp desconectado',
+    });
+  } catch (err) {
+    res.json({ ok: false, status: 'ERROR', message: 'No se pudo verificar WAHA' });
   }
 };

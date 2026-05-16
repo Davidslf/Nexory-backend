@@ -12,7 +12,8 @@ import cutRoutes           from './routes/cutRoutes';
 import communicationRoutes from './routes/communicationRoutes';
 import taskRoutes          from './routes/taskRoutes';
 import mikrotikRoutes      from './routes/mikrotikRoutes';
-import { scheduleMonthlyCutJob } from './jobs/monthlyCutJob';
+import { scheduleMonthlyCutJob, runMonthlyCutJob } from './jobs/monthlyCutJob';
+import { authenticate } from './middleware/auth';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -33,6 +34,42 @@ app.use('/api/cuts',           cutRoutes);
 app.use('/api/communications', communicationRoutes);
 app.use('/api/tasks',          taskRoutes);
 app.use('/api/mikrotik',       mikrotikRoutes);
+
+// ── Dev/Admin endpoints ───────────────────────────────────────────────────────
+import { prisma } from './config/database';
+
+// Disparar corte mensual manualmente
+app.post('/api/admin/run-cut-job', authenticate, async (_req, res) => {
+  try {
+    await runMonthlyCutJob();
+    res.json({ ok: true, message: 'CutJob ejecutado manualmente' });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Crear pago OVERDUE en un cliente (para probar cortes automáticos)
+app.post('/api/admin/simulate-overdue/:clientId', authenticate, async (req, res) => {
+  try {
+    const client = await prisma.client.findUnique({ where: { id: req.params.clientId } });
+    if (!client) { res.status(404).json({ error: 'Cliente no encontrado' }); return; }
+
+    const now = new Date();
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    const payment = await prisma.payment.create({
+      data: {
+        clientId: client.id,
+        amount:   client.monthlyFee,
+        month,
+        status:   'OVERDUE',
+      },
+    });
+    res.json({ ok: true, payment, message: `Pago OVERDUE creado para ${client.name}` });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 app.use((_req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
 

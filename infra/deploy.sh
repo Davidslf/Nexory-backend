@@ -10,7 +10,7 @@ set -e
 # ── Configuración ────────────────────────────────────────────────────────────
 
 RESOURCE_GROUP="nexory-rg"
-LOCATION="eastus"
+LOCATION="eastus2"
 ENVIRONMENT="dev"
 DB_ADMIN_USER="nexoryadmin"
 

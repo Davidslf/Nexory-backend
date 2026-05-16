@@ -7,3 +7,4 @@ dist/
 .idea/
 
 /src/generated/prisma
+deploy.zip

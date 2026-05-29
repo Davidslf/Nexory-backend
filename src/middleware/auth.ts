@@ -3,6 +3,16 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'nexory_secret';
 
+export interface JwtPayload {
+  userId: string;
+  username: string;
+  role: string;
+}
+
+export interface AuthRequest extends Request {
+  user?: JwtPayload;
+}
+
 export const authenticate = (req: Request, res: Response, next: NextFunction): void => {
   try {
     const authHeader = req.headers.authorization;

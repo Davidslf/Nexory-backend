@@ -69,10 +69,10 @@ const getConnection = async () => {
 
   const host = process.env.MIKROTIK_HOST;
   const user = process.env.MIKROTIK_USER;
-  const pass = process.env.MIKROTIK_PASS;
+  const pass = process.env.MIKROTIK_PASS ?? '';  // CHR default: empty password
 
-  if (!host || !user || !pass) {
-    throw new Error('Faltan variables de entorno: MIKROTIK_HOST, MIKROTIK_USER, MIKROTIK_PASS');
+  if (!host || !user) {
+    throw new Error('Faltan variables de entorno: MIKROTIK_HOST, MIKROTIK_USER');
   }
 
   return new mod.RouterOSAPI({

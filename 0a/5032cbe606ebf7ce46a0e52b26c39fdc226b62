@@ -1,0 +1,19 @@
+src/middleware/auth.ts
+  s_88272df344e885::t_752c6a3be29062 6-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "0a5032cbe606ebf7ce46a0e52b26c39fdc226b62",
+  "prompts": {},
+  "sessions": {
+    "s_88272df344e885": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d936897-5d99-4f68-8594-8b19ff3b1708",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Davidslf <deividlujan200@gmail.com>"
+    }
+  }
+}

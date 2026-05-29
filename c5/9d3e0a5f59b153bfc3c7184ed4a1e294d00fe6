@@ -1,0 +1,33 @@
+src/scripts/testMikrotik.ts
+  s_88272df344e885::t_4228c93eb9a38d 1-2,23-24
+  s_88272df344e885::t_00d1d0da1242f1 3,7-11,18-19,21,25,27-30
+  s_88272df344e885::t_0d21f63592af6e 4-6,12
+  s_88272df344e885::t_6132afcdd9ce3c 13-14,17,22
+  s_88272df344e885::t_23e0f9e7363056 15-16,20,26
+src/scripts/testEmail.ts
+  s_88272df344e885::t_0d37d08cf51265 1-17
+src/scripts/makeAdmin.ts
+  s_88272df344e885::t_5d0eaae309f36e 1-13
+src/services/mikrotikService.ts
+  s_88272df344e885::t_4ff331e49bbc36 72,74-75
+src/scripts/updateUserEmail.ts
+  s_88272df344e885::t_feca3cf5e63ce0 1-14
+src/scripts/listUsers.ts
+  s_88272df344e885::t_f5ce2af59efb7e 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "c59d3e0a5f59b153bfc3c7184ed4a1e294d00fe6",
+  "prompts": {},
+  "sessions": {
+    "s_88272df344e885": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d936897-5d99-4f68-8594-8b19ff3b1708",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Davidslf <deividlujan200@gmail.com>"
+    }
+  }
+}
